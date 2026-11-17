@@ -17,11 +17,16 @@ add_library(
 
 target_compile_options(maigveil PRIVATE
     -std=c++20
+    -Os
     -fvisibility=hidden
     -fvisibility-inlines-hidden
     -ffunction-sections
     -fdata-sections
+    -fmerge-all-constants
+    -fno-exceptions
     -fno-rtti
+    -fno-unwind-tables
+    -fno-asynchronous-unwind-tables
     -Wall
     -Wextra
     -Wno-unused-parameter
@@ -29,6 +34,7 @@ target_compile_options(maigveil PRIVATE
 
 target_link_options(maigveil PRIVATE
     -Wl,--gc-sections
+    -Wl,--icf=safe
     -Wl,--exclude-libs,ALL
     -Wl,-z,relro,-z,now
 )

@@ -1,6 +1,7 @@
 #include "anti_tamper.hpp"
 #include "compile_time_obf.hpp"
 #include "syscalls.hpp"
+#include <array>
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
@@ -15,15 +16,27 @@ namespace {
 std::atomic<uint32_t> g_baseline_crc{0};
 std::atomic<uintptr_t> g_text_start{0};
 std::atomic<size_t> g_text_size{0};
+std::atomic<uint64_t> g_check_counter{0};
+std::atomic<bool> g_last_full_clean{true};
+
+constexpr auto make_crc32_table() noexcept {
+    std::array<uint32_t, 256> tbl{};
+    for (uint32_t i = 0; i < 256; ++i) {
+        uint32_t c = i;
+        for (int b = 0; b < 8; ++b) {
+            c = (c & 1u) ? ((c >> 1) ^ 0xEDB88320u) : (c >> 1);
+        }
+        tbl[i] = c;
+    }
+    return tbl;
+}
+
+constexpr auto CRC32_TABLE = make_crc32_table();
 
 uint32_t crc32_compute(const uint8_t* data, size_t len) noexcept {
     uint32_t crc = 0xFFFFFFFFu;
     for (size_t i = 0; i < len; ++i) {
-        crc ^= data[i];
-        for (int b = 0; b < 8; ++b) {
-            const uint32_t mask = -(crc & 1u);
-            crc = (crc >> 1) ^ (0xEDB88320u & mask);
-        }
+        crc = (crc >> 8) ^ CRC32_TABLE[(crc ^ data[i]) & 0xFFu];
     }
     return ~crc;
 }
@@ -142,8 +155,20 @@ void init_self_integrity_baseline(const void* anchor_fn) noexcept {
     }
 }
 
-TamperReport run_self_defense_checks(const void* probe_fn) noexcept {
+TamperReport run_self_defense_checks(const void* probe_fn, bool full_scan) noexcept {
     TamperReport report{};
+    // Always run O(1) inline hook prologue check (<2ns)
+    const bool hook_free = !has_inline_hook_prologue(probe_fn);
+    report.no_inline_hooks = hook_free;
+
+    const uint64_t tick = g_check_counter.fetch_add(1, std::memory_order_relaxed);
+    if (!full_scan && (tick & 63u) != 0u) {
+        const bool cached_ok = g_last_full_clean.load(std::memory_order_acquire);
+        report.text_integrity_ok = cached_ok;
+        report.no_debugger_attached = cached_ok;
+        return report;
+    }
+
     const uintptr_t start = g_text_start.load(std::memory_order_acquire);
     const size_t sz = g_text_size.load(std::memory_order_acquire);
     const uint32_t expected = g_baseline_crc.load(std::memory_order_acquire);
@@ -152,8 +177,11 @@ TamperReport run_self_defense_checks(const void* probe_fn) noexcept {
         report.text_crc32 = current;
         report.text_integrity_ok = (current == expected);
     }
-    report.no_inline_hooks = !has_inline_hook_prologue(probe_fn) && check_maps_no_instrumentation();
+    report.no_inline_hooks = hook_free && check_maps_no_instrumentation();
     report.no_debugger_attached = check_tracer_pid_zero();
+    g_last_full_clean.store(
+        report.text_integrity_ok && report.no_inline_hooks && report.no_debugger_attached,
+        std::memory_order_release);
     return report;
 }
 

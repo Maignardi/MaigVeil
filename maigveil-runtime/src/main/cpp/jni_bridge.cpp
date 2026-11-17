@@ -378,7 +378,7 @@ void JNICALL native_exec_vm_void(JNIEnv* env, jclass, jint program_id, jobjectAr
 
 jintArray JNICALL native_get_status(JNIEnv* env, jclass) {
     const auto defense = maigveil::tamper::run_self_defense_checks(
-        reinterpret_cast<const void*>(&native_get_status));
+        reinterpret_cast<const void*>(&native_get_status), true);
     jint vals[7] = {
         g_initialized ? 1 : 0,
         g_vault_authenticated ? 1 : 0,

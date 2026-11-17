@@ -1,5 +1,6 @@
 #include "vm_engine.hpp"
 #include <cstring>
+#include <mutex>
 #include <vector>
 
 namespace maigveil::vm {
@@ -122,22 +123,40 @@ inline int64_t rd_i64(const uint8_t* p) noexcept {
     return static_cast<int64_t>(v);
 }
 
+struct JniPrimitiveCache {
+    jclass intCls = nullptr, longCls = nullptr, boolCls = nullptr;
+    jclass byteCls = nullptr, shortCls = nullptr, charCls = nullptr;
+    jmethodID intVal = nullptr, longVal = nullptr, boolVal = nullptr;
+    jmethodID byteVal = nullptr, shortVal = nullptr, charVal = nullptr;
+};
+
+static JniPrimitiveCache g_prim_cache;
+static std::once_flag g_prim_once;
+
+static void ensure_prim_cache(JNIEnv* env) noexcept {
+    std::call_once(g_prim_once, [env]() {
+        auto cache_cls = [env](const char* name, const char* mname, const char* mdesc,
+                               jclass& cls_out, jmethodID& mid_out) {
+            jclass local = env->FindClass(name);
+            if (local) {
+                cls_out = static_cast<jclass>(env->NewGlobalRef(local));
+                mid_out = env->GetMethodID(cls_out, mname, mdesc);
+                env->DeleteLocalRef(local);
+            }
+        };
+        cache_cls("java/lang/Integer", "intValue", "()I", g_prim_cache.intCls, g_prim_cache.intVal);
+        cache_cls("java/lang/Long", "longValue", "()J", g_prim_cache.longCls, g_prim_cache.longVal);
+        cache_cls("java/lang/Boolean", "booleanValue", "()Z", g_prim_cache.boolCls, g_prim_cache.boolVal);
+        cache_cls("java/lang/Byte", "byteValue", "()B", g_prim_cache.byteCls, g_prim_cache.byteVal);
+        cache_cls("java/lang/Short", "shortValue", "()S", g_prim_cache.shortCls, g_prim_cache.shortVal);
+        cache_cls("java/lang/Character", "charValue", "()C", g_prim_cache.charCls, g_prim_cache.charVal);
+    });
+}
+
 void unpack_args(JNIEnv* env, jobjectArray args, std::vector<VmValue>& locals) noexcept {
     if (!env || !args) return;
+    ensure_prim_cache(env);
     const jsize len = env->GetArrayLength(args);
-    jclass intCls = env->FindClass("java/lang/Integer");
-    jclass longCls = env->FindClass("java/lang/Long");
-    jclass boolCls = env->FindClass("java/lang/Boolean");
-    jclass byteCls = env->FindClass("java/lang/Byte");
-    jclass shortCls = env->FindClass("java/lang/Short");
-    jclass charCls = env->FindClass("java/lang/Character");
-
-    jmethodID intVal = intCls ? env->GetMethodID(intCls, "intValue", "()I") : nullptr;
-    jmethodID longVal = longCls ? env->GetMethodID(longCls, "longValue", "()J") : nullptr;
-    jmethodID boolVal = boolCls ? env->GetMethodID(boolCls, "booleanValue", "()Z") : nullptr;
-    jmethodID byteVal = byteCls ? env->GetMethodID(byteCls, "byteValue", "()B") : nullptr;
-    jmethodID shortVal = shortCls ? env->GetMethodID(shortCls, "shortValue", "()S") : nullptr;
-    jmethodID charVal = charCls ? env->GetMethodID(charCls, "charValue", "()C") : nullptr;
 
     for (jsize i = 0; i < len && static_cast<size_t>(i) < locals.size(); ++i) {
         jobject elem = env->GetObjectArrayElement(args, i);
@@ -145,35 +164,28 @@ void unpack_args(JNIEnv* env, jobjectArray args, std::vector<VmValue>& locals) n
             locals[i] = VmValue{};
             continue;
         }
-        if (intCls && env->IsInstanceOf(elem, intCls)) {
-            locals[i].i64 = env->CallIntMethod(elem, intVal);
+        if (g_prim_cache.intCls && env->IsInstanceOf(elem, g_prim_cache.intCls)) {
+            locals[i].i64 = env->CallIntMethod(elem, g_prim_cache.intVal);
             env->DeleteLocalRef(elem);
-        } else if (longCls && env->IsInstanceOf(elem, longCls)) {
-            locals[i].i64 = env->CallLongMethod(elem, longVal);
+        } else if (g_prim_cache.longCls && env->IsInstanceOf(elem, g_prim_cache.longCls)) {
+            locals[i].i64 = env->CallLongMethod(elem, g_prim_cache.longVal);
             env->DeleteLocalRef(elem);
-        } else if (boolCls && env->IsInstanceOf(elem, boolCls)) {
-            locals[i].i64 = env->CallBooleanMethod(elem, boolVal) ? 1 : 0;
+        } else if (g_prim_cache.boolCls && env->IsInstanceOf(elem, g_prim_cache.boolCls)) {
+            locals[i].i64 = env->CallBooleanMethod(elem, g_prim_cache.boolVal) ? 1 : 0;
             env->DeleteLocalRef(elem);
-        } else if (byteCls && env->IsInstanceOf(elem, byteCls)) {
-            locals[i].i64 = env->CallByteMethod(elem, byteVal);
+        } else if (g_prim_cache.byteCls && env->IsInstanceOf(elem, g_prim_cache.byteCls)) {
+            locals[i].i64 = env->CallByteMethod(elem, g_prim_cache.byteVal);
             env->DeleteLocalRef(elem);
-        } else if (shortCls && env->IsInstanceOf(elem, shortCls)) {
-            locals[i].i64 = env->CallShortMethod(elem, shortVal);
+        } else if (g_prim_cache.shortCls && env->IsInstanceOf(elem, g_prim_cache.shortCls)) {
+            locals[i].i64 = env->CallShortMethod(elem, g_prim_cache.shortVal);
             env->DeleteLocalRef(elem);
-        } else if (charCls && env->IsInstanceOf(elem, charCls)) {
-            locals[i].i64 = env->CallCharMethod(elem, charVal);
+        } else if (g_prim_cache.charCls && env->IsInstanceOf(elem, g_prim_cache.charCls)) {
+            locals[i].i64 = env->CallCharMethod(elem, g_prim_cache.charVal);
             env->DeleteLocalRef(elem);
         } else {
             locals[i].obj = elem;
         }
     }
-
-    if (intCls) env->DeleteLocalRef(intCls);
-    if (longCls) env->DeleteLocalRef(longCls);
-    if (boolCls) env->DeleteLocalRef(boolCls);
-    if (byteCls) env->DeleteLocalRef(byteCls);
-    if (shortCls) env->DeleteLocalRef(shortCls);
-    if (charCls) env->DeleteLocalRef(charCls);
 }
 
 std::vector<char> parse_param_types(const std::string& desc, char& ret_type_out) noexcept {

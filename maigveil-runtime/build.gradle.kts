@@ -12,7 +12,7 @@ android {
 
         externalNativeBuild {
             cmake {
-                cppFlags("-std=c++20", "-fvisibility=hidden", "-O3", "-ffunction-sections", "-fdata-sections")
+                cppFlags("-std=c++20", "-fvisibility=hidden", "-Os", "-fno-exceptions", "-ffunction-sections", "-fdata-sections")
                 arguments("-DANDROID_STL=c++_static")
             }
         }
