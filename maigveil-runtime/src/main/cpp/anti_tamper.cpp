@@ -7,7 +7,9 @@
 #include <cstdint>
 #include <cstring>
 #include <dlfcn.h>
+#if defined(__linux__)
 #include <elf.h>
+#endif
 
 namespace maigveil::tamper {
 
@@ -42,6 +44,7 @@ uint32_t crc32_compute(const uint8_t* data, size_t len) noexcept {
 }
 
 bool locate_elf_exec_segment(const void* anchor_fn, uintptr_t& start_out, size_t& size_out) noexcept {
+#if defined(__linux__)
     Dl_info info{};
     if (dladdr(anchor_fn, &info) == 0 || info.dli_fbase == nullptr) {
         return false;
@@ -70,6 +73,8 @@ bool locate_elf_exec_segment(const void* anchor_fn, uintptr_t& start_out, size_t
         }
     }
 #endif
+#endif
+    (void)anchor_fn; (void)start_out; (void)size_out;
     return false;
 }
 

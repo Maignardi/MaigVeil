@@ -1,3 +1,4 @@
+#include "../../main/cpp/anti_tamper.hpp"
 #include "../../main/cpp/compile_time_obf.hpp"
 #include "../../main/cpp/crypto_engine.hpp"
 #include "../../main/cpp/zero_trace_mem.hpp"
@@ -71,6 +72,21 @@ int main() {
     zbuf.release();
     assert(zbuf.ptr == nullptr);
 
-    std::cout << "[MaigVeil C++20] All native crypto, white-box, AEAD & zero-trace tests PASSED.\n";
+    // 6. Simulated Frida/Dobby inline hook trampoline detection
+    uint8_t clean_prologue[8] = {0x55, 0x48, 0x89, 0xE5, 0x90, 0x90, 0x90, 0x90};
+    auto clean_report = maigveil::tamper::run_self_defense_checks(clean_prologue, false);
+    assert(clean_report.no_inline_hooks);
+
+#if defined(__x86_64__)
+    uint8_t frida_jmp_trampoline[8] = {0xE9, 0x12, 0x34, 0x56, 0x78, 0x90, 0x90, 0x90};
+    auto hooked_report = maigveil::tamper::run_self_defense_checks(frida_jmp_trampoline, false);
+    assert(!hooked_report.no_inline_hooks);
+
+    uint8_t int3_bp[8] = {0xCC, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90};
+    auto bp_report = maigveil::tamper::run_self_defense_checks(int3_bp, false);
+    assert(!bp_report.no_inline_hooks);
+#endif
+
+    std::cout << "[MaigVeil C++20] All native crypto, white-box, AEAD, anti-hook & zero-trace tests PASSED.\n";
     return 0;
 }
