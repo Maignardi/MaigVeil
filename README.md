@@ -35,6 +35,17 @@ MaigVeil/
 
 ---
 
+## Why MaigVeil + R8 / ProGuard (Not Either/Or)
+
+**ProGuard and R8 were built to shrink and optimize APKs — not to stop reverse engineering.** Even with `isMinifyEnabled = true`, anyone opening your APK in JADX or `apktool` can still:
+- Read every `String` literal and `const val` in plain text.
+- Trace clean `if/else` decision trees and business formulas.
+- Search directly for `Cipher.getInstance` or `MessageDigest` calls.
+- Unzip and read `assets/` files (`.json`, `.pem`, SQLite DBs, ML models).
+- Patch smali code, re-sign the APK with a debug key, and run the modified app.
+
+**MaigVeil complements R8 rather than replacing it:** keep **R8** enabled for shrinking and identifier renaming (`a.b.c`), while **MaigVeil** adds the real security layers R8 never had (ARX string encryption, Zero-Trace `mmap`/`mlock` secrets, `LOOKUPSWITCH` flattening + opaque predicates, `INVOKEDYNAMIC` call-graph hiding, C++20 shuffled-opcode VM, ChaCha20-Poly1305 asset encryption, and silent direct-syscall APK signature binding).
+
 ## Comparison with Existing Tools
 
 | Capability | R8 / ProGuard | MaigVeil | Commercial Tier-1 (DexGuard / Promon) |
@@ -67,7 +78,7 @@ pluginManagement {
     resolutionStrategy {
         eachPlugin {
             if (requested.id.id == "io.github.maignardi.maigveil") {
-                useModule("com.github.Maignardi.MaigVeil:maigveil-plugin:1.0.0")
+                useModule("com.github.Maignardi.MaigVeil:maigveil-plugin:v1.0.0")
             }
         }
     }
@@ -96,8 +107,8 @@ android {
 }
 
 dependencies {
-    implementation("com.github.Maignardi.MaigVeil:maigveil-annotations:1.0.0")
-    implementation("com.github.Maignardi.MaigVeil:maigveil-runtime:1.0.0")
+    implementation("com.github.Maignardi.MaigVeil:maigveil-annotations:v1.0.0")
+    implementation("com.github.Maignardi.MaigVeil:maigveil-runtime:v1.0.0")
 }
 ```
 
