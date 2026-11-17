@@ -53,12 +53,32 @@ MaigVeil/
 
 ## Quick Start
 
-### 1. Include the Plugin & Dependencies
+### 1. Add MaigVeil from JitPack (External Projects)
 
 In `settings.gradle.kts`:
 ```kotlin
 pluginManagement {
-    includeBuild("maigveil-plugin")
+    repositories {
+        gradlePluginPortal()
+        google()
+        mavenCentral()
+        maven { url = uri("https://jitpack.io") }
+    }
+    resolutionStrategy {
+        eachPlugin {
+            if (requested.id.id == "io.github.maignardi.maigveil") {
+                useModule("com.github.Maignardi.MaigVeil:maigveil-plugin:1.0.0")
+            }
+        }
+    }
+}
+
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url = uri("https://jitpack.io") }
+    }
 }
 ```
 
@@ -74,6 +94,16 @@ android {
         minSdk = 26 // Required for INVOKEDYNAMIC in DEX
     }
 }
+
+dependencies {
+    implementation("com.github.Maignardi.MaigVeil:maigveil-annotations:1.0.0")
+    implementation("com.github.Maignardi.MaigVeil:maigveil-runtime:1.0.0")
+}
+```
+
+*(If developing locally from source inside a monorepo, use `includeBuild("maigveil-plugin")` and `project(":maigveil-annotations")` / `project(":maigveil-runtime")` instead.)*
+
+Configure the `maigVeil { ... }` DSL in `app/build.gradle.kts`:
 
 maigVeil {
     enabled.set(true)

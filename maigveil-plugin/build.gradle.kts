@@ -1,9 +1,10 @@
 plugins {
     `kotlin-dsl`
     `java-gradle-plugin`
+    `maven-publish`
 }
 
-group = "io.github.maignardi.maigveil"
+group = "com.github.Maignardi.MaigVeil"
 version = "1.0.0"
 
 java {

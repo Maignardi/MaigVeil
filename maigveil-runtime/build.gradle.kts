@@ -1,6 +1,10 @@
 plugins {
     alias(libs.plugins.android.library)
+    `maven-publish`
 }
+
+group = "com.github.Maignardi.MaigVeil"
+version = "1.0.0"
 
 android {
     namespace = "io.github.maignardi.maigveil.runtime"
@@ -37,6 +41,25 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+    }
+
+    publishing {
+        singleVariant("release") {
+            withSourcesJar()
+        }
+    }
+}
+
+afterEvaluate {
+    publishing {
+        publications {
+            create<MavenPublication>("release") {
+                from(components["release"])
+                groupId = "com.github.Maignardi.MaigVeil"
+                artifactId = "maigveil-runtime"
+                version = "1.0.0"
+            }
+        }
     }
 }
 
