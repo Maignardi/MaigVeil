@@ -70,6 +70,10 @@ enum class VmOp : uint8_t {
     IF_ICMPGE   = 0x4A,
     IF_ICMPGT   = 0x4B,
     IF_ICMPLE   = 0x4C,
+    IFNULL      = 0x4D,
+    IFNONNULL   = 0x4E,
+    IF_ACMPEQ   = 0x4F,
+    IF_ACMPNE   = 0x5A,
 
     NEWARRAY    = 0x50,
     ARRAYLENGTH = 0x51,
@@ -590,6 +594,31 @@ VmValue execute_program(
                 else if (op == VmOp::IF_ICMPGT) take = (a > b);
                 else if (op == VmOp::IF_ICMPLE) take = (a <= b);
                 if (take) pc = target;
+                break;
+            }
+            case VmOp::IFNULL:
+            case VmOp::IFNONNULL: {
+                if (pc + 4 > code_len) return VmValue{};
+                const uint32_t target = rd_u32(code + pc);
+                pc += 4;
+                jobject obj = pop().obj;
+                const bool is_null = (obj == nullptr);
+                if ((op == VmOp::IFNULL && is_null) || (op == VmOp::IFNONNULL && !is_null)) {
+                    pc = target;
+                }
+                break;
+            }
+            case VmOp::IF_ACMPEQ:
+            case VmOp::IF_ACMPNE: {
+                if (pc + 4 > code_len) return VmValue{};
+                const uint32_t target = rd_u32(code + pc);
+                pc += 4;
+                jobject b = pop().obj;
+                jobject a = pop().obj;
+                const bool eq = (a == b) || (env && a && b && env->IsSameObject(a, b));
+                if ((op == VmOp::IF_ACMPEQ && eq) || (op == VmOp::IF_ACMPNE && !eq)) {
+                    pc = target;
+                }
                 break;
             }
             case VmOp::NEWARRAY: {

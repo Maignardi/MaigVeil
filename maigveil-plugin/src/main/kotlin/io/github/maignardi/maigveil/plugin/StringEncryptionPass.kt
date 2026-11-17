@@ -90,20 +90,28 @@ object StringEncryptionPass {
                 if (cur is LdcInsnNode && cur.cst is String) {
                     val str = cur.cst as String
                     val id = collector.registerString(cn.name, mn.name, str)
-                    val replacement = InsnList().apply {
-                        add(LdcInsnNode(id))
-                        add(
-                            MethodInsnNode(
-                                Opcodes.INVOKESTATIC,
-                                RUNTIME_CLS,
-                                "decryptString",
-                                "(I)Ljava/lang/String;",
-                                false
+                    val zeroTraceCall = findFollowingZeroTraceCall(cur)
+                    if (zeroTraceCall != null) {
+                        insns.insert(cur, LdcInsnNode(id))
+                        insns.remove(cur)
+                        zeroTraceCall.name = "withSecretId"
+                        zeroTraceCall.desc = "(ILkotlin/jvm/functions/Function1;)Ljava/lang/Object;"
+                    } else {
+                        val replacement = InsnList().apply {
+                            add(LdcInsnNode(id))
+                            add(
+                                MethodInsnNode(
+                                    Opcodes.INVOKESTATIC,
+                                    RUNTIME_CLS,
+                                    "decryptString",
+                                    "(I)Ljava/lang/String;",
+                                    false
+                                )
                             )
-                        )
+                        }
+                        insns.insert(cur, replacement)
+                        insns.remove(cur)
                     }
-                    insns.insert(cur, replacement)
-                    insns.remove(cur)
                     modified = true
                 }
                 cur = next
@@ -111,6 +119,26 @@ object StringEncryptionPass {
         }
 
         return modified
+    }
+
+    private fun findFollowingZeroTraceCall(ldcNode: LdcInsnNode): MethodInsnNode? {
+        var probe = ldcNode.next
+        var steps = 0
+        while (probe != null && steps < 12) {
+            if (probe is MethodInsnNode &&
+                probe.opcode == Opcodes.INVOKESTATIC &&
+                probe.owner == RUNTIME_CLS &&
+                probe.name == "withZeroTraceSecret" &&
+                probe.desc == "(Ljava/lang/String;Lkotlin/jvm/functions/Function1;)Ljava/lang/Object;"
+            ) {
+                return probe
+            }
+            if (probe is LdcInsnNode && probe.cst is String) return null
+            if (probe is org.objectweb.asm.tree.JumpInsnNode || probe is org.objectweb.asm.tree.LabelNode) return null
+            probe = probe.next
+            steps++
+        }
+        return null
     }
 
     private fun findOrCreateClinit(cn: ClassNode): MethodNode {

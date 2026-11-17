@@ -84,6 +84,32 @@ object MaigVeil {
         }
     }
 
+    /**
+     * Ergonomic Zero-Trace secret accessor.
+     *
+     * When compiled with the MaigVeil Gradle plugin, `StringEncryptionPass` rewrites
+     * `LDC <literal>` + `withZeroTraceSecret` directly to `withSecretId(stringId, block)`,
+     * ensuring the secret literal is removed from DEX and never allocated as a `java.lang.String`.
+     */
+    @JvmStatic
+    fun <T> withZeroTraceSecret(secret: String, block: (CharBuffer) -> T): T {
+        val arr = secret.toCharArray()
+        val buf = CharBuffer.wrap(arr)
+        return try {
+            block(buf)
+        } finally {
+            arr.fill('\u0000')
+        }
+    }
+
+    /**
+     * Intrinsic target for [withZeroTraceSecret] after `StringEncryptionPass` rewriting.
+     */
+    @JvmStatic
+    fun <T> withSecretId(stringId: Int, block: (CharBuffer) -> T): T {
+        return withSecret(stringId) { buf -> block(buf) }
+    }
+
     @PublishedApi
     internal fun allocZeroTraceHandle(stringId: Int): LongArray =
         MaigVeilNative.nativeAllocZeroTrace(stringId)

@@ -143,17 +143,32 @@ object LicenseEngine {
 }
 ```
 
-### 3. Read Encrypted Assets & Zero-Trace Secrets
+### 3. Mobile Usage Examples (Copy-Paste Ready)
 
-`MaigVeilInitProvider` initializes the native engine automatically before `Application.onCreate()`.
+`MaigVeilInitProvider` initializes the native C++20 engine automatically before `Application.onCreate()`. See [FintechSecurityExamples.kt](app/src/main/java/com/maignardi/maigveil/protected_core/FintechSecurityExamples.kt) for the full runnable showcase.
 
 ```kotlin
-// Read ChaCha20-Poly1305 encrypted asset transparently
+// 1. Zero-Trace Secret (never allocated as a java.lang.String on the JVM heap)
+val authHeader = MaigVeil.withZeroTraceSecret("Bearer mv_live_ephemeral_secret") { chars ->
+    // Decrypted straight into mlock'd native memory, wiped & munmapped on exit
+    computeHmac(chars)
+}
+
+// 2. Virtualized Business Logic (runs inside C++20 libmaigveil.so VM)
+@VeilVirtualize
+@JvmStatic
+fun isPremiumEntitlementValid(accountId: Int, code: Int): Int {
+    val expected = ((accountId xor 0x2026CAFE) + 7919) and 0x7FFFFFFF
+    return if (code == expected) 1 else 0
+}
+
+// 3. Encrypted Assets (ChaCha20-Poly1305)
 val configJson = MaigVeilAssets.open(context, "config/secret_config.json")
     .bufferedReader().use { it.readText() }
 
-// Inspect native self-defense telemetry
+// 4. Native Self-Defense Telemetry
 val status = MaigVeil.status()
+check(status.isHealthy) { "Tamper or hook detected!" }
 ```
 
 ---

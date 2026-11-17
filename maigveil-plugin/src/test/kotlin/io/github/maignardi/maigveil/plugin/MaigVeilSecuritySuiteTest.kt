@@ -299,6 +299,57 @@ class MaigVeilSecuritySuiteTest {
     }
 
     @Test
+    fun `withZeroTraceSecret intrinsic rewrites literal directly to withSecretId`() {
+        val cn = ClassNode().apply {
+            version = Opcodes.V11
+            access = Opcodes.ACC_PUBLIC
+            name = "com/example/core/ZeroTraceCaller"
+            superName = "java/lang/Object"
+            methods.add(
+                MethodNode(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC, "useSecret", "()V", null, null).apply {
+                    instructions.add(LdcInsnNode("super_ephemeral_token"))
+                    instructions.add(InsnNode(Opcodes.ACONST_NULL))
+                    instructions.add(
+                        MethodInsnNode(
+                            Opcodes.INVOKESTATIC,
+                            "io/github/maignardi/maigveil/runtime/MaigVeil",
+                            "withZeroTraceSecret",
+                            "(Ljava/lang/String;Lkotlin/jvm/functions/Function1;)Ljava/lang/Object;",
+                            false
+                        )
+                    )
+                    instructions.add(InsnNode(Opcodes.POP))
+                    instructions.add(InsnNode(Opcodes.RETURN))
+                }
+            )
+        }
+        val cfg = ResolvedMaigVeilConfig(
+            enabled = true,
+            profile = VeilProfile.PARANOID,
+            targetPackages = listOf("com.example.core"),
+            excludePackages = emptyList(),
+            stringEnabled = true,
+            encryptConstVals = true,
+            zeroTraceMode = true,
+            controlFlowEnabled = false,
+            flatteningProbability = 0,
+            opaquePredicatesLevel = 0,
+            callIndirectionEnabled = false,
+            targetApis = emptyList(),
+            virtualizationEnabled = false,
+            encryptAssets = emptyList(),
+            bindApkSigningCertSha256 = "",
+            stripKotlinMetadata = false,
+            stripAnnotations = false
+        )
+        val collector = VaultCollector(BuildSeedData.generate(ByteArray(32)))
+        assertTrue(StringEncryptionPass.transform(cn, cfg, collector))
+        val insns = cn.methods[0].instructions
+        assertFalse(insns.any { it is LdcInsnNode && it.cst is String })
+        assertTrue(insns.any { it is MethodInsnNode && it.name == "withSecretId" })
+    }
+
+    @Test
     fun `vault writer produces authenticated binary vault`() {
         val seed = BuildSeedData.generate(ByteArray(32) { 0x11 })
         val tmp = File.createTempFile("mv_vault_test", ".bin").apply { deleteOnExit() }

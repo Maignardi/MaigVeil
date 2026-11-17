@@ -87,6 +87,10 @@ object VirtualizationPass {
         const val IF_ICMPGE = 0x4A
         const val IF_ICMPGT = 0x4B
         const val IF_ICMPLE = 0x4C
+        const val IFNULL = 0x4D
+        const val IFNONNULL = 0x4E
+        const val IF_ACMPEQ = 0x4F
+        const val IF_ACMPNE = 0x5A
 
         const val NEWARRAY = 0x50
         const val ARRAYLENGTH = 0x51
@@ -289,7 +293,7 @@ object VirtualizationPass {
                     patchSites += code.size() to (insn as JumpInsnNode).label
                     emitI32(0)
                 }
-                in Opcodes.IFEQ..Opcodes.IF_ICMPLE -> {
+                in Opcodes.IFEQ..Opcodes.IF_ACMPNE, Opcodes.IFNULL, Opcodes.IFNONNULL -> {
                     val vmJump = when (insn.opcode) {
                         Opcodes.IFEQ -> VmOp.IFEQ
                         Opcodes.IFNE -> VmOp.IFNE
@@ -303,6 +307,10 @@ object VirtualizationPass {
                         Opcodes.IF_ICMPGE -> VmOp.IF_ICMPGE
                         Opcodes.IF_ICMPGT -> VmOp.IF_ICMPGT
                         Opcodes.IF_ICMPLE -> VmOp.IF_ICMPLE
+                        Opcodes.IF_ACMPEQ -> VmOp.IF_ACMPEQ
+                        Opcodes.IF_ACMPNE -> VmOp.IF_ACMPNE
+                        Opcodes.IFNULL -> VmOp.IFNULL
+                        Opcodes.IFNONNULL -> VmOp.IFNONNULL
                         else -> return null
                     }
                     emitOp(vmJump)

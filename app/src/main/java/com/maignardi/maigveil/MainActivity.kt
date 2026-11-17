@@ -31,6 +31,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.maignardi.maigveil.protected_core.FintechSecurityExamples
 import com.maignardi.maigveil.protected_core.ProtectedVaultEngine
 import com.maignardi.maigveil.ui.theme.MaigVeilTheme
 import io.github.maignardi.maigveil.runtime.MaigVeil
@@ -152,14 +153,15 @@ fun MaigVeilDashboard(modifier: Modifier = Modifier) {
                 modifier = Modifier.weight(1f),
                 onClick = {
                     val t0 = System.nanoTime()
-                    val zeroTraceLen = MaigVeil.withSecret(1) { buf ->
-                        buf.length
-                    }
+                    val sig = FintechSecurityExamples.signRequestWithZeroTraceToken("tx_10042")
+                    val entitled = FintechSecurityExamples.isPremiumEntitlementValid(1001, ((1001 xor 0x2026CAFE) + 7919) and 0x7FFFFFFF)
+                    val allowed = FintechSecurityExamples.isTransactionAllowed(120_000, 25)
                     val dtUs = (System.nanoTime() - t0) / 1000.0
                     status = MaigVeil.status()
                     outputLog = buildString {
-                        appendLine("[Zero-Trace mmap/mlock & Anti-Tamper]")
-                        appendLine("Transient secret length: $zeroTraceLen chars (wiped & munmapped)")
+                        appendLine("[Zero-Trace mmap/mlock & Fintech Examples]")
+                        appendLine("Zero-Trace HMAC-style sig: $sig (never on JVM heap)")
+                        appendLine("C++20 VM entitlement check: ${entitled == 1} | Risk gate: $allowed")
                         appendLine("Latency: ${"%.2f".format(dtUs)} us")
                         appendLine("Health: ${if (status.isHealthy) "HEALTHY" else "ALERT"}")
                     }

@@ -55,7 +55,11 @@ bool find_base_apk_path(std::string& path_out) noexcept {
 
         const size_t slash = line.find('/');
         if (slash == std::string::npos) continue;
-        const std::string candidate = line.substr(slash);
+        std::string candidate = line.substr(slash);
+        while (!candidate.empty() &&
+               (candidate.back() == ' ' || candidate.back() == '\r' || candidate.back() == '\t')) {
+            candidate.pop_back();
+        }
         if (candidate.size() >= ext_apk.size() &&
             candidate.compare(candidate.size() - ext_apk.size(), ext_apk.size(), ext_apk) == 0) {
             if (candidate.find(base_apk) != std::string::npos) {
