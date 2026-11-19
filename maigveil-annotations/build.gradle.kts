@@ -1,16 +1,16 @@
+import com.vanniktech.maven.publish.JavadocJar
+import com.vanniktech.maven.publish.KotlinJvm
+import com.vanniktech.maven.publish.SourcesJar
+
 plugins {
     alias(libs.plugins.kotlin.jvm)
     `java-library`
-    `maven-publish`
+    alias(libs.plugins.vanniktech.maven.publish)
 }
-
-group = "com.github.Maignardi.MaigVeil"
-version = "1.0.0"
 
 java {
     sourceCompatibility = JavaVersion.VERSION_11
     targetCompatibility = JavaVersion.VERSION_11
-    withSourcesJar()
 }
 
 kotlin {
@@ -19,13 +19,16 @@ kotlin {
     }
 }
 
-publishing {
-    publications {
-        create<MavenPublication>("release") {
-            from(components["java"])
-            groupId = "com.github.Maignardi.MaigVeil"
-            artifactId = "maigveil-annotations"
-            version = "1.0.0"
-        }
+mavenPublishing {
+    configure(
+        KotlinJvm(
+            javadocJar = JavadocJar.Javadoc(),
+            sourcesJar = SourcesJar.Sources()
+        )
+    )
+
+    pom {
+        name.set("MaigVeil Annotations")
+        description.set("BINARY-retained compile-time annotations (@VeilObfuscate, @VeilVirtualize, @VeilControlFlow, @VeilString, @VeilAsset, @VeilIgnore) for the MaigVeil Android binary shield.")
     }
 }

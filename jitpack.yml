@@ -1,7 +1,0 @@
-jdk:
-  - openjdk21
-before_install:
-  - sdkmanager "platforms;android-37" "build-tools;36.0.0" "ndk;28.2.13676358" "cmake;3.22.1" || true
-install:
-  - ./gradlew :maigveil-annotations:publishToMavenLocal :maigveil-runtime:publishToMavenLocal -x test --no-daemon
-  - ./gradlew -p maigveil-plugin publishToMavenLocal -x test --no-daemon

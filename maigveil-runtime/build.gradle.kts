@@ -1,10 +1,11 @@
+import com.vanniktech.maven.publish.AndroidSingleVariantLibrary
+import com.vanniktech.maven.publish.JavadocJar
+import com.vanniktech.maven.publish.SourcesJar
+
 plugins {
     alias(libs.plugins.android.library)
-    `maven-publish`
+    alias(libs.plugins.vanniktech.maven.publish)
 }
-
-group = "com.github.Maignardi.MaigVeil"
-version = "1.0.0"
 
 android {
     namespace = "io.github.maignardi.maigveil.runtime"
@@ -42,29 +43,25 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-
-    publishing {
-        singleVariant("release") {
-            withSourcesJar()
-        }
-    }
-}
-
-afterEvaluate {
-    publishing {
-        publications {
-            create<MavenPublication>("release") {
-                from(components["release"])
-                groupId = "com.github.Maignardi.MaigVeil"
-                artifactId = "maigveil-runtime"
-                version = "1.0.0"
-            }
-        }
-    }
 }
 
 dependencies {
-    implementation(project(":maigveil-annotations"))
+    api(project(":maigveil-annotations"))
     implementation(libs.androidx.core.ktx)
     testImplementation(libs.junit)
+}
+
+mavenPublishing {
+    configure(
+        AndroidSingleVariantLibrary(
+            javadocJar = JavadocJar.Javadoc(),
+            sourcesJar = SourcesJar.Sources(),
+            variant = "release"
+        )
+    )
+
+    pom {
+        name.set("MaigVeil Runtime")
+        description.set("Native C++20 polymorphic VM, ChaCha20-Poly1305 asset decryptor, direct-syscall APK signature verifier, and Zero-Trace secret runtime for MaigVeil.")
+    }
 }

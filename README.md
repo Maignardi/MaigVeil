@@ -2,6 +2,10 @@
 
 **Multi-Pass Android Binary Shield — Gradle Plugin + ASM 9 Bytecode Transformer + Native C++20 Polymorphic VM & Anti-Tamper Engine**
 
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.maignardi/maigveil-runtime.svg?label=Maven%20Central)](https://central.sonatype.com/artifact/io.github.maignardi/maigveil-runtime)
+[![Gradle Plugin Portal](https://img.shields.io/gradle-plugin-portal/v/io.github.maignardi.maigveil?label=Gradle%20Plugin%20Portal)](https://plugins.gradle.org/plugin/io.github.maignardi.maigveil)
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.maignardi/maigveil-runtime.svg?label=Maven%20Central)](https://central.sonatype.com/artifact/io.github.maignardi/maigveil-runtime)
+[![Gradle Plugin Portal](https://img.shields.io/gradle-plugin-portal/v/io.github.maignardi.maigveil?label=Gradle%20Plugin%20Portal)](https://plugins.gradle.org/plugin/io.github.maignardi.maigveil)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![AGP](https://img.shields.io/badge/AGP-8.7%2B%20%2F%209.4-green.svg)](https://developer.android.com/build)
 [![C++20](https://img.shields.io/badge/Native-C%2B%2B20%20NDK-orange.svg)](maigveil-runtime/src/main/cpp/CMakeLists.txt)
@@ -64,7 +68,7 @@ MaigVeil/
 
 ## Quick Start
 
-### 1. Add MaigVeil from JitPack (External Projects)
+### 1. Installation (Maven Central + Gradle Plugin Portal)
 
 In `settings.gradle.kts`:
 ```kotlin
@@ -73,14 +77,6 @@ pluginManagement {
         gradlePluginPortal()
         google()
         mavenCentral()
-        maven { url = uri("https://jitpack.io") }
-    }
-    resolutionStrategy {
-        eachPlugin {
-            if (requested.id.id == "io.github.maignardi.maigveil") {
-                useModule("com.github.Maignardi.MaigVeil:maigveil-plugin:v1.0.0")
-            }
-        }
     }
 }
 
@@ -88,7 +84,6 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        maven { url = uri("https://jitpack.io") }
     }
 }
 ```
@@ -97,7 +92,7 @@ In `app/build.gradle.kts`:
 ```kotlin
 plugins {
     alias(libs.plugins.android.application)
-    id("io.github.maignardi.maigveil")
+    id("io.github.maignardi.maigveil") version "1.0.0"
 }
 
 android {
@@ -107,8 +102,8 @@ android {
 }
 
 dependencies {
-    implementation("com.github.Maignardi.MaigVeil:maigveil-annotations:v1.0.0")
-    implementation("com.github.Maignardi.MaigVeil:maigveil-runtime:v1.0.0")
+    implementation("io.github.maignardi:maigveil-annotations:1.0.0")
+    implementation("io.github.maignardi:maigveil-runtime:1.0.0")
 }
 ```
 
@@ -116,6 +111,7 @@ dependencies {
 
 Configure the `maigVeil { ... }` DSL in `app/build.gradle.kts`:
 
+```kotlin
 maigVeil {
     enabled.set(true)
     profile.set(io.github.maignardi.maigveil.plugin.VeilProfile.PARANOID)
